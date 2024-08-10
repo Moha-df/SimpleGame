@@ -1,12 +1,38 @@
 const cursor = document.getElementById("cursor");
+const mouse = document.getElementById("mouse");
+const scoreDiv = document.getElementById("score");
+const difficultyDiv = document.getElementById("difficulty")
+let score = 0;
 const cursorStyle = cursor.style;
+const mouseStyle = mouse.style;
 const direction = 0; // 0 = en haut ; 90 = droite ; 180 = bas ; 270 = gauche
 let cursorX = window.innerWidth / 2;
 let cursorY = window.innerHeight / 2;
-let difficulty = 1000;
+let difficulty = 800;
+let pause = 0; // 0 = pas en pause, 1 = en pause
+let gameOver = 0 // 0 = pas game over , 1 = gameover
+
+
+
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        pause = 1;
+        console.log('Jeu en pause');
+    } else {
+        pause = 0;
+        console.log('Jeu repris');
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'p' || event.key === 'P') {
+        pause = !pause;  
+    }
+});
+
 
 document.addEventListener('mousemove', e =>{
-
     const rect = cursor.getBoundingClientRect();
 
     const posX = e.clientX;
@@ -16,10 +42,18 @@ document.addEventListener('mousemove', e =>{
     cursorY = rect.top + rect.height / 2;
     const angle = Math.atan2(posY - cursorY, posX - cursorX) * (180 / Math.PI) + 90;
 
+    mouse.style.left = `${posX}px`;
+    mouse.style.top = `${posY}px`;
+
+    if(pause || gameOver){
+        return;
+    }
+
     cursor.animate({
         left: `${posX}px`,
         top: `${posY}px`
-    }, { duration: 5000, fill: "forwards"});
+    }, {duration: 5000, fill: "forwards"});
+
 
 
     cursorStyle.transform = `rotate(${angle}deg)`;
@@ -34,6 +68,9 @@ function isCollision(rect1, rect2) {
 }
 
 document.addEventListener('click', e => {
+    if(pause || gameOver){
+        return;
+    }
     // Calcul de la direction du laser
     const laserX = e.clientX;
     const laserY = e.clientY;
@@ -45,7 +82,7 @@ document.addEventListener('click', e => {
     const angle = Math.atan2(dy, dx);
     
     // Calculer la position de départ du laser (100px devant le curseur)
-    const offset = 100;
+    const offset = 40;
     const startX = cursorX + Math.cos(angle) * offset;
     const startY = cursorY + Math.sin(angle) * offset;
     
@@ -60,7 +97,11 @@ document.addEventListener('click', e => {
     laser.style.transform = `rotate(${angle * (180 / Math.PI)}deg)`;
     
     function animateLaser() {
-        const speed = 25; // Vitesse du laser
+        if(pause || gameOver){
+            requestAnimationFrame(animateLaser);
+            return;
+        }
+        const speed = 15; // Vitesse du laser
         let currentX = parseFloat(laser.style.left);
         let currentY = parseFloat(laser.style.top);
         let dx = Math.cos(angle) * speed;
@@ -89,14 +130,19 @@ document.addEventListener('click', e => {
                     if (isCollision(laserRect, asteroidRect)) {
                         l.remove(); // Supprime le laser en cas de collision
                         a.remove(); // Supprime l'astéroïde en cas de collision
+                        difficulty -= 30;
+                        if (difficulty < 40) difficulty = 40; 
+                        updateDifficulty();
+                        score += 10;
+                        scoreDiv.innerHTML = 'Score : ' + score;
                         collisionDetected = true;
                     }
                 });
             });
 
-            if (!collisionDetected) {
+            
                 requestAnimationFrame(animateLaser);
-            }
+            
         }
     }
 
@@ -111,6 +157,9 @@ function getRandomAnimation() {
 
 
 function spawnAstar() {
+    if(pause || gameOver){
+        return;
+    }
     window.scrollTo(0, 0);
     const backgroundElement = document.querySelector('.background');
     const starElement = document.createElement('div');
@@ -162,6 +211,9 @@ function getRandomAsteroidClass() {
 }
 
 function spawnAsteroid() {
+    if(pause || gameOver){
+        return;
+    }
     const asteroidClass = getRandomAsteroidClass();
     const asteroidContainer = document.createElement('div');
     asteroidContainer.className = 'asteroid-container';
@@ -201,7 +253,10 @@ function spawnAsteroid() {
 }
 
 function moveAsteroid(asteroidContainer, side) {
-    const speed = 10; // La vitesse de déplacement, ajustez-la comme vous le souhaitez
+    if(pause || gameOver){
+        return;
+    }
+    const speed = 5; // La vitesse de déplacement, ajustez-la comme vous le souhaitez
     
     // Détermine la direction du mouvement en fonction de la position de départ
     const rect = asteroidContainer.getBoundingClientRect();
@@ -230,6 +285,10 @@ function moveAsteroid(asteroidContainer, side) {
     }
 
     function animate() {
+        if(pause || gameOver){
+            requestAnimationFrame(animate);
+            return;
+        }
         x += dx;
         y += dy;
         asteroidContainer.style.left = `${x}px`;
@@ -264,20 +323,23 @@ function moveAsteroid(asteroidContainer, side) {
 
 
 function gameOverScreen(){
+    gameOver = true; // Défini le jeu en mode Game Over
     const gameOverScreen = document.createElement('div');
     gameOverScreen.className = 'GOscreen';
-    gameOverScreen.innerHTML = `<h1>Game Over!</h1> <button id="restart">Restart!</button>`;
+    gameOverScreen.innerHTML = `<h1>Game Over!</h1> <h4>Score : ` + score + `</h4> <button id="restart">Restart</button>`;
     document.body.appendChild(gameOverScreen);
 
-    // Add event listener for the "Restart" button
     const restartButton = document.getElementById('restart');
     restartButton.addEventListener('click', () => {
-        location.reload(); // Reload the page
+        location.reload(); 
     });
+}
+
+let asteroidIntervalId = setInterval(spawnAsteroid, difficulty);
+function updateDifficulty() {
+    clearInterval(asteroidIntervalId); // Arrête l'intervalle actuel
+    asteroidIntervalId = setInterval(spawnAsteroid, difficulty); // Démarre un nouvel intervalle avec la nouvelle difficulté
 }
 
 
 
-
-
-setInterval(spawnAsteroid, difficulty);
