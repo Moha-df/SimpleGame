@@ -14,6 +14,23 @@ let gameOver = 0 // 0 = pas game over , 1 = gameover
 
 
 
+function checkZoomLevel() {
+    // Si le zoom n'est pas à 100%, met le jeu en pause
+    if (window.devicePixelRatio !== 1) {
+        pause = 1;
+        console.log('Jeu en pause - Zoom non à 100%');
+    } else {
+        pause = 0;
+        console.log('Jeu repris - Zoom à 100%');
+    }
+}
+
+// Vérifie le zoom au chargement de la page
+window.addEventListener('load', checkZoomLevel);
+
+// Vérifie le zoom à chaque redimensionnement de la fenêtre
+window.addEventListener('resize', checkZoomLevel);
+
 
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
